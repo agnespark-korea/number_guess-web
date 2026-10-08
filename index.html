@@ -1,0 +1,409 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>숫자 맞추기 게임</title>
+  <meta name="description" content="1부터 50 사이의 숫자를 10번 안에 맞혀 보세요.">
+  <style>
+    :root {
+      --bg: #fbf7f1;
+      --surface: #ffffff;
+      --border: #e7dfd3;
+      --text: #2a2420;
+      --muted: #7a6f66;
+      --accent: #e0673a;
+      --accent-ink: #ffffff;
+      --accent-soft: #fde9df;
+      --up: #2f6fdb;
+      --up-soft: #e6eefc;
+      --down: #c2410c;
+      --down-soft: #fdebe2;
+      --good: #1f8a4c;
+      --good-soft: #e3f4ea;
+      --bad: #b42335;
+      --bad-soft: #fbe6e9;
+      --radius: 16px;
+      color-scheme: light;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #171412;
+        --surface: #221e1b;
+        --border: #3a332e;
+        --text: #f3ede6;
+        --muted: #a99d92;
+        --accent: #f08457;
+        --accent-ink: #1a1310;
+        --accent-soft: #3d261c;
+        --up: #7fa8f5;
+        --up-soft: #1f2a40;
+        --down: #f59a6b;
+        --down-soft: #3b2418;
+        --good: #5fd08f;
+        --good-soft: #17301f;
+        --bad: #f27d8c;
+        --bad-soft: #3a1c21;
+        color-scheme: dark;
+      }
+    }
+
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
+      line-height: 1.5;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 32px 16px 48px;
+    }
+
+    .game {
+      width: 100%;
+      max-width: 440px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 28px 24px 24px;
+    }
+
+    h1 { margin: 0; font-size: 1.6rem; letter-spacing: -0.02em; }
+    .lead { margin: 6px 0 20px; color: var(--muted); }
+
+    .stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+    .stat {
+      background: var(--bg);
+      border-radius: 12px;
+      padding: 10px 14px;
+    }
+    .stat-label { display: block; font-size: 0.8rem; color: var(--muted); }
+    .stat-value { font-size: 1.35rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+    /* 남은 범위 막대 */
+    .range { margin-bottom: 20px; }
+    .range-head {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .range-head strong { color: var(--text); font-variant-numeric: tabular-nums; }
+    .bar {
+      position: relative;
+      height: 10px;
+      border-radius: 999px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+    .bar-fill {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      background: var(--accent);
+      border-radius: 999px;
+      transition: left 0.3s ease, width 0.3s ease;
+    }
+    .bar-ends {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    form { display: flex; gap: 8px; }
+    input {
+      flex: 1;
+      min-width: 0;
+      font: inherit;
+      font-size: 1.4rem;
+      font-weight: 700;
+      text-align: center;
+      padding: 10px 12px;
+      border: 2px solid var(--border);
+      border-radius: 14px;
+      background: var(--surface);
+      color: var(--text);
+    }
+    input:focus { outline: none; border-color: var(--accent); }
+    input:disabled { opacity: 0.5; }
+
+    button {
+      font: inherit;
+      font-weight: 700;
+      border: 0;
+      border-radius: 14px;
+      padding: 0 22px;
+      min-height: 52px;
+      background: var(--accent);
+      color: var(--accent-ink);
+      cursor: pointer;
+    }
+    button:hover { filter: brightness(1.05); }
+    button:disabled { opacity: 0.5; cursor: default; filter: none; }
+    button:focus-visible, input:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+    .message {
+      min-height: 56px;
+      margin: 16px 0 0;
+      padding: 14px 16px;
+      border-radius: 14px;
+      background: var(--bg);
+      font-weight: 600;
+    }
+    .message.up { background: var(--up-soft); color: var(--up); }
+    .message.down { background: var(--down-soft); color: var(--down); }
+    .message.warn { background: var(--accent-soft); color: var(--text); }
+    .message.win { background: var(--good-soft); color: var(--good); }
+    .message.lose { background: var(--bad-soft); color: var(--bad); }
+    .message small { display: block; font-weight: 400; color: var(--muted); margin-top: 2px; }
+
+    .history { margin-top: 18px; }
+    .history h2 { font-size: 0.85rem; font-weight: 600; color: var(--muted); margin: 0 0 8px; }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; list-style: none; margin: 0; padding: 0; }
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      font-size: 0.95rem;
+    }
+    .chip.up { background: var(--up-soft); color: var(--up); }
+    .chip.down { background: var(--down-soft); color: var(--down); }
+    .chip.hit { background: var(--good-soft); color: var(--good); }
+    .empty { color: var(--muted); font-size: 0.9rem; margin: 0; }
+
+    .again { width: 100%; margin-top: 20px; }
+    [hidden] { display: none !important; }
+
+    footer { margin-top: 18px; text-align: center; font-size: 0.8rem; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <main class="game">
+    <h1>숫자 맞추기 게임</h1>
+    <p class="lead">1부터 50 사이의 숫자를 맞혀 보세요. 기회는 10번이에요!</p>
+
+    <div class="stats">
+      <div class="stat">
+        <span class="stat-label">남은 기회</span>
+        <span class="stat-value" id="chances">10번</span>
+      </div>
+      <div class="stat">
+        <span class="stat-label">최고 기록</span>
+        <span class="stat-value" id="best">-</span>
+      </div>
+    </div>
+
+    <div class="range" aria-hidden="true">
+      <div class="range-head">
+        <span>정답이 있을 수 있는 범위</span>
+        <strong id="range-text">1 ~ 50</strong>
+      </div>
+      <div class="bar"><div class="bar-fill" id="bar-fill"></div></div>
+      <div class="bar-ends"><span>1</span><span>50</span></div>
+    </div>
+
+    <form id="guess-form" autocomplete="off" novalidate>
+      <input id="guess" type="text" inputmode="numeric"
+             placeholder="숫자 입력" aria-label="1부터 50 사이 숫자" autofocus>
+      <button type="submit" id="submit">확인</button>
+    </form>
+
+    <p class="message" id="message" role="status" aria-live="polite">숫자를 입력하고 확인을 누르세요.</p>
+
+    <section class="history">
+      <h2>내가 입력한 숫자</h2>
+      <p class="empty" id="history-empty">아직 없어요.</p>
+      <ul class="chips" id="history"></ul>
+    </section>
+
+    <button type="button" class="again" id="again" hidden>다시 하기</button>
+
+    <footer>made by agnespark-korea</footer>
+  </main>
+
+  <script>
+    const MIN = 1;
+    const MAX = 50;
+    const CHANCES = 10;
+    const BEST_KEY = "numberGuessBest";
+
+    const els = {
+      form: document.getElementById("guess-form"),
+      input: document.getElementById("guess"),
+      submit: document.getElementById("submit"),
+      message: document.getElementById("message"),
+      chances: document.getElementById("chances"),
+      best: document.getElementById("best"),
+      rangeText: document.getElementById("range-text"),
+      barFill: document.getElementById("bar-fill"),
+      history: document.getElementById("history"),
+      historyEmpty: document.getElementById("history-empty"),
+      again: document.getElementById("again"),
+    };
+
+    let state;
+
+    // 최고 기록은 이 브라우저에만 저장된다 (저장이 막힌 환경에서도 게임은 동작).
+    function loadBest() {
+      try {
+        const value = parseInt(localStorage.getItem(BEST_KEY), 10);
+        return Number.isInteger(value) && value > 0 ? value : null;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function saveBest(value) {
+      try { localStorage.setItem(BEST_KEY, String(value)); } catch (e) { /* 무시 */ }
+    }
+
+    let best = loadBest();
+
+    function newGame() {
+      state = {
+        answer: Math.floor(Math.random() * (MAX - MIN + 1)) + MIN,
+        tries: 0,
+        low: MIN,
+        high: MAX,
+        guesses: [],
+        over: false,
+      };
+      els.history.innerHTML = "";
+      els.historyEmpty.hidden = false;
+      els.input.disabled = false;
+      els.submit.disabled = false;
+      els.again.hidden = true;
+      els.input.value = "";
+      showMessage("숫자를 입력하고 확인을 누르세요.", "");
+      render();
+      els.input.focus();
+    }
+
+    function render() {
+      els.chances.textContent = (CHANCES - state.tries) + "번";
+      els.best.textContent = best ? best + "번" : "-";
+      els.rangeText.textContent = state.low + " ~ " + state.high;
+      const span = MAX - MIN + 1;
+      els.barFill.style.left = ((state.low - MIN) / span * 100) + "%";
+      els.barFill.style.width = ((state.high - state.low + 1) / span * 100) + "%";
+    }
+
+    function showMessage(text, kind, detail) {
+      els.message.className = "message" + (kind ? " " + kind : "");
+      els.message.textContent = text;
+      if (detail) {
+        const small = document.createElement("small");
+        small.textContent = detail;
+        els.message.appendChild(small);
+      }
+    }
+
+    function addChip(number, kind) {
+      const li = document.createElement("li");
+      li.className = "chip " + kind;
+      const arrow = kind === "up" ? " ↑" : kind === "down" ? " ↓" : " ✓";
+      li.textContent = number + arrow;
+      els.history.appendChild(li);
+      els.historyEmpty.hidden = true;
+    }
+
+    function endGame() {
+      state.over = true;
+      els.input.disabled = true;
+      els.submit.disabled = true;
+      els.again.hidden = false;
+      els.again.focus();
+    }
+
+    function guess(raw) {
+      if (state.over) return;
+      const text = raw.trim();
+
+      // 잘못된 입력은 기회를 쓰지 않는다.
+      if (!/^\d+$/.test(text)) {
+        showMessage("숫자만 입력하세요.", "warn", "기회는 줄어들지 않았어요.");
+        return;
+      }
+      const n = parseInt(text, 10);
+      if (n < MIN || n > MAX) {
+        showMessage(MIN + "부터 " + MAX + " 사이 숫자를 입력하세요.", "warn", "기회는 줄어들지 않았어요.");
+        return;
+      }
+      if (state.guesses.includes(n)) {
+        showMessage(n + "은(는) 이미 입력한 숫자예요.", "warn", "기회는 줄어들지 않았어요.");
+        return;
+      }
+
+      state.tries += 1;
+      state.guesses.push(n);
+      const left = CHANCES - state.tries;
+
+      if (n === state.answer) {
+        addChip(n, "hit");
+        const isRecord = best === null || state.tries < best;
+        if (isRecord) {
+          best = state.tries;
+          saveBest(best);
+        }
+        render();
+        showMessage(
+          "정답입니다! " + state.tries + "번 만에 맞혔어요.",
+          "win",
+          isRecord ? "새 최고 기록이에요! 🎉" : "최고 기록은 " + best + "번이에요."
+        );
+        endGame();
+        return;
+      }
+
+      if (n < state.answer) {
+        state.low = Math.max(state.low, n + 1);
+        addChip(n, "up");
+      } else {
+        state.high = Math.min(state.high, n - 1);
+        addChip(n, "down");
+      }
+      render();
+
+      if (left === 0) {
+        showMessage("아쉬워요! 기회를 모두 썼어요.", "lose", "정답은 " + state.answer + "였어요.");
+        endGame();
+        return;
+      }
+
+      if (n < state.answer) {
+        showMessage("업! 더 큰 수예요.", "up", "남은 기회: " + left + "번");
+      } else {
+        showMessage("다운! 더 작은 수예요.", "down", "남은 기회: " + left + "번");
+      }
+    }
+
+    els.form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      guess(els.input.value);
+      els.input.value = "";
+      if (!state.over) els.input.focus();
+    });
+
+    els.again.addEventListener("click", newGame);
+
+    newGame();
+  </script>
+</body>
+</html>
